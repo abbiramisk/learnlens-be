@@ -1,9 +1,29 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
+
+// Stub DOMMatrix/Path2D so pdfjs-dist doesn't try to load optional "canvas" (we only need text extraction, not rendering)
+if (typeof globalThis.DOMMatrix === "undefined") {
+  globalThis.DOMMatrix = class DOMMatrix {
+    constructor() {}
+  };
+}
+if (typeof globalThis.Path2D === "undefined") {
+  globalThis.Path2D = class Path2D {
+    constructor() {}
+  };
+}
+
 const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
 const { GoogleGenAI } = require("@google/genai");
+
+// Required for Node/serverless: point to the worker file so require() can find it
+pdfjsLib.GlobalWorkerOptions.workerSrc = path.join(
+  path.dirname(require.resolve("pdfjs-dist/legacy/build/pdf.js")),
+  "pdf.worker.js"
+);
 
 const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
