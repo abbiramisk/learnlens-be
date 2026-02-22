@@ -2,8 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const dotenv = require("dotenv");
-const fs = require("fs");
 const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
 const { GoogleGenAI } = require("@google/genai");
 
@@ -15,7 +13,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const upload = multer({ dest: "uploads/" });
+// In-memory storage for Vercel (serverless has no persistent filesystem)
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.get("/", (req, res) => {
   res.send("LearnLens Backend Running 🚀");
@@ -23,7 +22,7 @@ app.get("/", (req, res) => {
 
 app.post("/upload", upload.single("pdf"), async (req, res) => {
   try {
-    const data = new Uint8Array(fs.readFileSync(req.file.path));
+    const data = new Uint8Array(req.file.buffer);
 
     const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
 
@@ -63,8 +62,13 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+// Only start HTTP server when run directly (e.g. node server.js), not when required by Vercel
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
